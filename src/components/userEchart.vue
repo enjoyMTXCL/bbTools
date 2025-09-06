@@ -223,7 +223,7 @@ const showBarChart = (res: GroupItem) => {
   }
 
   const groupData: any = {
-    backgroundColor: '#fff',
+    // backgroundColor: '#fff',
     grid: chartGrid,
     dataZoom: {
       type: 'inside'
@@ -268,7 +268,7 @@ const showBarChart = (res: GroupItem) => {
                 return barColor[params.name] || '#5470c6'
               },
               borderType: 'solid',
-              borderColor: '#fff'
+              // borderColor: '#fff'
             },
             stack: 'x'
           }
@@ -299,7 +299,7 @@ const showBarChart = (res: GroupItem) => {
               return barColor[params.name] || '#5470c6'
             },
             borderType: 'solid',
-            borderColor: '#fff'
+            // borderColor: '#fff'
           },
           stack: 'x'
         }
@@ -338,7 +338,7 @@ const showLineChart = (res: GroupItem) => {
   }
 
   const lineData: any = {
-    backgroundColor: '#fff',
+    // backgroundColor: '#fff',
     grid: chartGrid,
     legend: {
       data: <string[]>[],

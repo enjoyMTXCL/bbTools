@@ -3,13 +3,13 @@
     <div class="home-box">
       <div class="title-box">
         <h2>米游社 cookie</h2>
-        <el-tooltip class="box-item" effect="light" content="输入从米游社获取的cookie，详情请查看帮助" placement="right">
+        <el-tooltip class="box-item" content="输入从米游社获取的cookie，详情请查看帮助" placement="right">
           <el-icon size="18px" color='#f56c6c'><question-filled /></el-icon>
         </el-tooltip>
       </div>
       <el-row align="middle" style="margin-bottom: 50px">
         <el-col :span="22">
-          <el-input v-model="cookie" clearable autosize :disabled="cookieDisabled" />
+          <el-input v-model="cookie" clearable autosize :disabled="cookieDisabled" placeholder="请输入米游社cookie" />
         </el-col>
         <el-col :span="1" :offset="1">
           <el-icon :size="22" @click="cookieLock">
@@ -29,7 +29,7 @@
         <div>
           <el-link type="primary" class="down-template" @click="downloadTemplate" :icon="Download">下载成员名单模板</el-link>
           <el-button type="primary" @click="uploadExcel" :icon="Upload">导入成员信息
-            <el-tooltip effect="light" content="下载名单模板，然后按照帮助：二-4 填写信息并导入" placement="top">
+            <el-tooltip content="下载名单模板，然后按照帮助：二-4 填写信息并导入" placement="top">
           <el-icon size="18px"  class="right-icon" ><question-filled /></el-icon>
         </el-tooltip></el-button>
         </div>
@@ -89,7 +89,7 @@
                         <el-col :span="2">
                           <p class="state" v-if="!element.profile && !element.message">未获取</p>
                           <p class="state" v-else-if="element.profile && !element.message">已获取</p>
-                          <el-tooltip class="box-item" effect="light" :content="element.message || '数据异常'" placement="top"
+                          <el-tooltip class="box-item" :content="element.message || '数据异常'" placement="top"
                             v-else>
                             <el-icon color="#f56c6c" class="col-warning">
                               <warning />
@@ -97,7 +97,7 @@
                           </el-tooltip>
                         </el-col>
                         <el-col :span="7" class="operation-btn">
-                          <el-tooltip class="box-item" effect="light" content="单独获取本成员数据" placement="top">
+                          <el-tooltip class="box-item" content="单独获取本成员数据" placement="top">
                             <el-icon @click="refreshPeople(element)" style="cursor: pointer">
                               <refresh />
                             </el-icon>
@@ -117,10 +117,10 @@
                           </el-icon>
                         </el-col>
                         <el-col :span="6">
-                          <input type="text" v-model="nowPeopleName" placeholder="请输入昵称">
+                          <input type="text" v-model="nowPeopleName" placeholder="请输入昵称" class="my-input">
                         </el-col>
                         <el-col :span="7">
-                          <input type="number" v-model="nowPeopleUid" placeholder="请输入uid">
+                          <input type="number" v-model="nowPeopleUid" placeholder="请输入uid" class="my-input">
                         </el-col>
                         <el-col :span="2">
                           <p class="state">状态</p>
@@ -146,10 +146,10 @@
                     <el-col :span="2" class="rank-col">
                     </el-col>
                     <el-col :span="6">
-                      <input type="text" v-model="nowPeopleName" placeholder="请输入昵称">
+                      <input type="text" v-model="nowPeopleName" placeholder="请输入昵称" class="my-input">
                     </el-col>
                     <el-col :span="7">
-                      <input type="number" v-model="nowPeopleUid" placeholder="请输入uid">
+                      <input type="number" v-model="nowPeopleUid" placeholder="请输入uid" class="my-input">
                     </el-col>
                     <el-col :span="2">
                       <p class="state">状态</p>
@@ -720,7 +720,7 @@ const downloadTemplate = () => {
 
     .list-title {
       width: 100%;
-      background: #fff;
+      background: var(--color-background);
 
       .el-col {
         border: 1px solid var(--el-border-color);
@@ -744,7 +744,7 @@ const downloadTemplate = () => {
     }
 
     .list-item {
-      background: #fff;
+      background: var(--color-background);
 
       .rank-col {
         cursor: move;
@@ -828,7 +828,7 @@ const downloadTemplate = () => {
   .list-add {
     position: relative;
     display: block;
-    background-color: #fff;
+    background-color: var(--color-background);
     border: 1px solid var(--el-border-color);
     border-top-width: 0;
     height: 55px;
@@ -877,6 +877,10 @@ const downloadTemplate = () => {
     display: flex;
     justify-content: flex-end;
     gap: 10px;
+  }
+
+  .my-input{
+    background: var(--color-background);
   }
 }
 

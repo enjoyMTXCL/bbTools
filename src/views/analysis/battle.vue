@@ -17,7 +17,7 @@
               <span v-else class="fail">失败</span>
             </p>
             <div class="square">
-              <p>{{ redSquare }}</p>
+              <p class="red">{{ redSquare }}</p>
               <p>{{ blueSquare }}</p>
             </div>
             <img :src="mapUrl" alt="团战地图" style="width:100%;" v-show="mapUrl">
@@ -172,12 +172,13 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .analysis-box {
-  margin: 16px;
+  margin: 16px 30px;
 
   .map-box {
-    background-color: #fafafa;
+    background-color: var(--color-background-soft);
     padding: 12px;
     margin-bottom: 12px;
+    border-radius: 5px;
 
     .select-box {
       display: flex;
@@ -187,7 +188,8 @@ onMounted(() => {
 
     .map-name {
       font-weight: bold;
-      margin-bottom: 8px;
+      margin: 12px 0 8px 5px;
+      font-size: 16px;
 
       span {
         color: var(--el-color-success);
@@ -204,7 +206,14 @@ onMounted(() => {
       justify-content: space-between;
       width: 100%;
       padding: 0 20px;
-      margin-bottom: 4px;
+      margin-bottom: 6px;
+      font-size: 16px;
+      p{
+        color: #1D6FC8;
+        &.red{
+          color: #C81D1D;
+        }
+      }
     }
   }
 }

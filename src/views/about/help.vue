@@ -83,7 +83,7 @@
           :initial-index="4"
           fit="cover"
         />
-        <p>在地址栏输入 https://bbs.mihoyo.com/ys/，按下回车键，打开米游社原神社区。</p>
+        <p>在地址栏输入 https://bbs.mihoyo.com/bh2/，按下回车键，打开米游社崩坏学园2社区。</p>
         <el-image
           class="help-img"
           :src="srcList[5]"
@@ -116,7 +116,7 @@
           :initial-index="8"
           fit="cover"
         />
-        <p>然后，在刚才登录好的米游社原神论坛页面上，点击刚才保存的书签，就可以得到米游社 Cookie 了，按下组合键 Ctrl+A 和 Ctrl+C，就可以复制到你的粘贴板里了。</p>
+        <p>然后，在刚才登录好的米游社崩坏学园2论坛页面上，点击刚才保存的书签，就可以得到米游社 Cookie 了，按下组合键 Ctrl+A 和 Ctrl+C，就可以复制到你的粘贴板里了。</p>
         <el-image
           class="help-img"
           :src="srcList[9]"

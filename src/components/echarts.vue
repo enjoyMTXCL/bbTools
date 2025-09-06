@@ -18,7 +18,7 @@ import { CanvasRenderer } from 'echarts/renderers'
 
 // 设置组件名
 defineOptions({
-  name: 'TestChart'
+  name: 'Charts'
 })
 
 // 定义 Props

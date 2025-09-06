@@ -4,7 +4,7 @@
       <el-affix>
         <div class="affix">
           <div class="affix-left">
-            <el-tooltip effect="light" content="返回首页" placement="right">
+            <el-tooltip content="返回首页" placement="right">
               <img src="@/assets/images/qiyana.png" alt="返回首页" class="affix-logo" @click="goto">
             </el-tooltip>
             <el-carousel height="40px" direction="vertical" :interval="10000" indicator-position='none'
@@ -219,7 +219,7 @@ async function checkUpdate() {
 
 .footer {
   display: flex;
-  background: #f8fafc;
+  background: var(--color-background-soft);
   // justify-content: end;
   flex-direction: column;
   align-items: flex-end;
@@ -227,7 +227,7 @@ async function checkUpdate() {
   // margin-top: torem(20);
   padding-top: 1vw;
   box-sizing: content-box;
-  border-top: 1px solid #dfdcdc;
+  border-top: 1px solid var(--color-border);
   font-size: 16px;
 
   .by {

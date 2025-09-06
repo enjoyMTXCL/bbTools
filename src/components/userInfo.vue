@@ -7,7 +7,7 @@
         <el-tab-pane v-for="(people, pIndex) in item.group" :key="pIndex">
           <template #label>
             <p v-if="people" class="fixed-width">{{ people.name }}</p>
-            <el-tooltip v-else class="box-item" effect="light" content="此位置有成员但未获取数据" placement="top">
+            <el-tooltip v-else class="box-item" content="此位置有成员但未获取数据" placement="top">
               <p class="fixed-width">成员占位 <el-icon><question-filled /></el-icon></p>
             </el-tooltip>
           </template>

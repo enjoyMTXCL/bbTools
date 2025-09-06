@@ -116,18 +116,23 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .analysis-box {
-  margin: 16px;
+  margin: 16px 30px;
 
   .map-box {
-    background-color: #fafafa;
+    background-color: var(--color-background-soft);
     padding: 12px;
     margin-bottom: 12px;
+    border-radius: 5px;
 
     .select-box {
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 10px;
+      padding: 0 4px;
+      p{
+        font-weight: bold;
+      }
     }
 
     .map-name {
