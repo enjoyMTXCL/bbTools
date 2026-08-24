@@ -5,15 +5,15 @@
       class="sidebar-group"
       :default-active="activeIndex"
     >
-      <el-menu-item index="#help1"><a href="#help1">一、选择社团所在服务器</a></el-menu-item>
-      <el-menu-item index="#help2"><a href="#help2">二、输入cookie与分组成员信息</a></el-menu-item>
-      <el-menu-item index="#help3"><a href="#help3">三、修改成员数据</a></el-menu-item>
-      <el-menu-item index="#help4"><a href="#help4">四、查看团战/团本数据分析</a></el-menu-item>
-      <el-menu-item index="#help5"><a href="#help5">附录一 cookie的获取</a></el-menu-item>
-      <el-menu-item index="#help6"><a href="#help6">附录二 常见问题</a></el-menu-item>
-      <el-menu-item index="#help7"><a href="#help7">附录三 关于服务器选择</a></el-menu-item>
-      <el-menu-item index="#help8"><a href="#help8">附录四 问题反馈</a></el-menu-item>
-      <el-menu-item index="#help9"><a href="#help9">附录五 更新相关</a></el-menu-item>
+      <el-menu-item index="#help1"><a href="#help1" @click.prevent="jumpTo('help1')">一、选择社团所在服务器</a></el-menu-item>
+      <el-menu-item index="#help2"><a href="#help2" @click.prevent="jumpTo('help2')">二、输入cookie与分组成员信息</a></el-menu-item>
+      <el-menu-item index="#help3"><a href="#help3" @click.prevent="jumpTo('help3')">三、修改成员数据</a></el-menu-item>
+      <el-menu-item index="#help4"><a href="#help4" @click.prevent="jumpTo('help4')">四、查看团战/团本数据分析</a></el-menu-item>
+      <el-menu-item index="#help5"><a href="#help5" @click.prevent="jumpTo('help5')">附录一 cookie的获取</a></el-menu-item>
+      <el-menu-item index="#help6"><a href="#help6" @click.prevent="jumpTo('help6')">附录二 常见问题</a></el-menu-item>
+      <el-menu-item index="#help7"><a href="#help7" @click.prevent="jumpTo('help7')">附录三 关于服务器选择</a></el-menu-item>
+      <el-menu-item index="#help8"><a href="#help8" @click.prevent="jumpTo('help8')">附录四 问题反馈</a></el-menu-item>
+      <el-menu-item index="#help9"><a href="#help9" @click.prevent="jumpTo('help9')">附录五 更新相关</a></el-menu-item>
       </el-menu>
       <!-- <section class="sidebar-group">
         <a href="#help1">一、选择社团所在服务器</a>
@@ -26,7 +26,7 @@
     <el-main>
       <!-- 日后优化：理论上scrollbar应该放在 layout 组件的main内，可以让所有页面都滚动，但是这里有个aside组件需要显示并且会跳转，所以暂时不改 -->
       <!-- 优化方向为：把aside也放在layout内，增加控制的变量用以控制什么时候显示，显示什么内容 -->
-      <el-scrollbar height="73vh">
+      <el-scrollbar ref="scrollbarRef" height="73vh" @scroll="handleScroll">
       <div class="help">
         <h1>使用帮助</h1>
         <h2 id="help1"> 一、选择社团所在服务器</h2>
@@ -75,7 +75,7 @@
           fit="cover"
         />
         <h2 id="help5">附录一 cookie的获取</h2>
-        <p>这里以 Firefox 浏览器为例，首先点击右上角的应用程序菜单，选择“新建隐私窗口”。</p>
+        <p>这里以 谷歌 浏览器为例，首先点击右上角的应用程序菜单，选择“新建隐私窗口”。</p>
         <el-image
           class="help-img"
           :src="srcList[4]"
@@ -107,8 +107,7 @@
           :initial-index="7"
           fit="cover"
         />
-        <p>这时新建书签，将下面的代码保存为书签。</p>
-        <p>javascript:(function () { prompt("", document.cookie); })();</p>
+        <p>这时按键盘上的F12按钮，打开开发者工具，选择"Network"或"网络"标签页</p>
         <el-image
           class="help-img"
           :src="srcList[8]"
@@ -116,7 +115,7 @@
           :initial-index="8"
           fit="cover"
         />
-        <p>然后，在刚才登录好的米游社崩坏学园2论坛页面上，点击刚才保存的书签，就可以得到米游社 Cookie 了，按下组合键 Ctrl+A 和 Ctrl+C，就可以复制到你的粘贴板里了。</p>
+        <p>在"Filter"内输入"getUserGameUnreadCount",点击下边筛选出的具体项，之后点击"Headers"标签栏，下拉到"Request Headers"处</p>
         <el-image
           class="help-img"
           :src="srcList[9]"
@@ -124,12 +123,14 @@
           :initial-index="9"
           fit="cover"
         />
+        <p>找到"cookie"项，三击cookie右侧的值可以直接选取cookie内容，复制其中的值，即为cookie，注意不要复制到其他项内容，否则会导致获取数据失败</p>
         <h2 id="help6">附录二 常见问题</h2>
         <p>1. Data is not public for the user：成员未绑定米游社或米游社信息未公开</p>
         <p>2. 用户信息不匹配：用户uid不正确或用户服务器不正确</p>
         <p>3. params error：服务器信息不正确，大多数为服务器标识不正确</p>
         <p>4. cookie无效或已过期：字面意思，需要更换cookie</p>
-        <p>5. 官方数据时间超长Bug：有时官方返回的数据上，会有初始时间超长的问题，如下图所示，此时可以通过点击 数据分析 页面的 起始 按钮(下图蓝框所标位置)，通过手动输入起始时间，把超出的时间减去，从而得到正确的时间
+        <p>5. Please Login：cookie已过期，或获取的cookie不完整，详见 附录一 cookie的获取</p>
+        <p>6. 官方数据时间超长Bug：有时官方返回的数据上，会有初始时间超长的问题，如下图所示，此时可以通过点击 数据分析 页面的 起始 按钮(下图蓝框所标位置)，通过手动输入起始时间，把超出的时间减去，从而得到正确的时间
           (注：输入的是分钟为单位的时间)。我相信官方会解决此类Bug，所以并不会对输入的起始时间数据进行缓存，以防污染源数据</p>
         <p>如输入的时间不对，进入别的页面再次返回即可</p>
         <el-image
@@ -181,6 +182,41 @@ const srcList = [
 ];
 
 const activeIndex = ref('#help1')
+const sectionIds = ['help1', 'help2', 'help3', 'help4', 'help5', 'help6', 'help7', 'help8', 'help9']
+// 到达标题位置前的偏移量（px），标题滚到距容器顶部约 90px 内即切换高亮
+const SCROLL_OFFSET = 90
+
+// el-scrollbar 组件实例（暴露 wrapRef 为内部滚动容器）
+const scrollbarRef = ref()
+
+// 滚动时同步侧边菜单高亮：根据当前视口顶部命中的区块更新 activeIndex
+// el-scrollbar 组件 @scroll 事件携带 { scrollTop, scrollLeft }
+const handleScroll = ({ scrollTop }: { scrollTop: number }) => {
+  const wrap = scrollbarRef.value?.wrapRef as HTMLElement | undefined
+  if (!wrap) return
+  const wrapTop = wrap.getBoundingClientRect().top
+  let current = sectionIds[0]
+  for (const id of sectionIds) {
+    const el = document.getElementById(id)
+    if (el && el.getBoundingClientRect().top <= wrapTop + SCROLL_OFFSET) {
+      current = id
+    } else {
+      break
+    }
+  }
+  // 滚到底部时固定高亮最后一项
+  if (scrollTop + wrap.clientHeight >= wrap.scrollHeight - 4) {
+    current = sectionIds[sectionIds.length - 1]
+  }
+  if (activeIndex.value !== '#' + current) {
+    activeIndex.value = '#' + current
+  }
+}
+
+// 侧边菜单点击：阻止默认锚点行为，平滑滚动到目标区块（滚动事件会同步更新高亮）
+const jumpTo = (id: string) => {
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
 </script>
 <style lang="scss" scoped>
 .sidebar-group{

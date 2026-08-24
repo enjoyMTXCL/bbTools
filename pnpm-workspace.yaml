@@ -1,0 +1,9 @@
+allowBuilds:
+  electron: true
+  esbuild: true
+  vue-demi: true
+  '@parcel/watcher': false
+# xlsx 0.20.x 仅在 sheetjs 官方 CDN 发布（npm registry 无此版本），
+# 作为 node-xlsx 的传递依赖会被 pnpm 11 的 blockExoticSubdeps 拦截。
+# sheetjs 为官方可信来源，关闭该策略项以允许 URL 传递依赖。
+blockExoticSubdeps: false

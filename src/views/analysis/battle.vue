@@ -9,10 +9,10 @@
                 <el-option v-for="item in historyArr" :key="item.value" :label="item.label" :value="item.value">
                 </el-option>
               </el-select>
-              <el-link type="primary" @click="downloadDataToExcel" :icon="Download">下载团战数据</el-link>
+              <el-link type="primary" @click="downloadDataToExcel(historyId)" :icon="Download">下载团战数据</el-link>
             </div>
             <p class="map-name">
-              {{ mapName }}
+              {{ mapName }}<span v-if="battleTime" class="time">（{{ battleTime }}）</span>
               <span v-if="resultStatus == 1">胜利</span>
               <span v-else class="fail">失败</span>
             </p>
@@ -27,8 +27,8 @@
           <user-info :groupList="groupList" :historyId="historyId" :startTime="startTime" v-model="nowTabs" groupType="battle" @tabClick="tabClick" />
         </el-col>
       </el-row>
-      <user-echart :groupList="groupList" :mapName="mapName" :historyId="historyId" :startTime="startTime" 
-      :redSquare="redSquare" :blueSquare="blueSquare" groupType="battle"
+      <user-echart :groupList="groupList" :mapName="mapName" :historyId="historyId" :startTime="startTime"
+      :redSquare="redSquare" :blueSquare="blueSquare" :battleTime="battleTime" groupType="battle"
       v-model="nowTabs" @tabClick="tabClick" @getMapInfo="getMapInfo" ref="userEchartRef" />
     </div>
   </el-scrollbar>
@@ -37,60 +37,30 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { ElMessageBox } from 'element-plus'
+import { ref } from 'vue'
 import {
   Download
 } from "@element-plus/icons-vue";
 import userInfo from '@/components/userInfo.vue';
 import userEchart from '@/components/userEchart.vue';
-import { handleExcelData } from '@/utils/index'
 
-import { GroupItem, HistoryArrItem, BattleInfo } from '@/types/analysis'
+import type { GroupItem, HistoryArrItem } from '@/types/analysis'
+import { useAnalysis } from '@/composables/useAnalysis'
+import { formatDateTime } from '@/utils/index'
 
-// ========== 生命周期和变量 ==========
-const groupList = ref<GroupItem[]>()
-const mapUrl = ref('')
-const mapName = ref('')
-const resultStatus = ref()
-const redSquare = ref('')
-const blueSquare = ref('')
-const startTime = ref(0)
-const fullLoading = ref(false)
+// ========== 团战页独有状态 ==========
 const historyId = ref();
-// let nowTabs = 0
-const nowTabs = ref(0)
-
-// 图表显示配置
-const userEchartRef = ref()
-
-// ========== 功能函数 ==========
-const solveTimeBug = () => {
-  const regPos = /^[0-9]+.?[0-9]*/
-  ElMessageBox.prompt('解决官方时间超长bug，这里输入初始时间（单位：分钟）。详见：帮助-常见问题-5', '解决官方时间超长问题', {
-    confirmButtonText: '确认',
-    cancelButtonText: '取消'
-  }).then(({ value }) => {
-    if (value && regPos.test(value)) {
-      startTime.value = Number(value) * 60
-      // showChart()
-      userEchartRef.value.showChart()
-    }
-  }).catch(() => {
-    // 用户取消操作，不做处理
-  })
-}
-
-// ========== 事件函数 ==========
-
-// 获取团战数据
 const historyArr = ref<HistoryArrItem[]>([])
-const getHistoryArr = () => {
-  // 类似获取地图信息，获取的是第一个角色的团战数据
-  if (groupList.value && groupList.value.length > 0) {
-    const historyObj = groupList.value[0].group[0]?.profile?.battle_info?.history || []
+
+// 获取团战历史场次列表（类似获取地图信息，获取的是第一个角色的团战数据）
+const getHistoryArr = (list: GroupItem[]) => {
+  if (list && list.length > 0) {
+    const historyObj = list[0].group[0]?.profile?.battle_info?.history || []
     for (let i = 0; i < historyObj.length; i++) {
-      let name = historyObj[i].name1 + ' VS ' + historyObj[i].name2
+      // endtime 为 22 点结束时间，减 2 小时统一显示 20 点开始时间
+      const endtime = historyObj[i].endtime
+      const time = formatDateTime(endtime ? endtime - 2 * 60 * 60 : undefined)
+      const name = `${historyObj[i].name1} VS ${historyObj[i].name2}${time ? '（' + time + '）' : ''}`
       historyArr.value.push({
         label: name,
         value: i
@@ -102,6 +72,16 @@ const getHistoryArr = () => {
   }
 }
 
+// ========== 公共逻辑（含 onMounted 数据加载） ==========
+const {
+  groupList, mapUrl, mapName, resultStatus, redSquare, blueSquare, battleTime,
+  startTime, fullLoading, nowTabs, userEchartRef,
+  solveTimeBug, tabClick, getMapInfo, downloadDataToExcel
+} = useAnalysis({
+  onLoaded: getHistoryArr
+})
+
+// 切换历史场次
 const checkHistory = () => {
   // 地图信息清空
   fullLoading.value = true
@@ -109,65 +89,14 @@ const checkHistory = () => {
   mapName.value = ''
   resultStatus.value = ''
   redSquare.value = ''
-  // showChart()
+  blueSquare.value = ''
+  battleTime.value = ''
   userEchartRef.value.showChart()
   // 500ms后关闭loading，给用户一个视觉提示
   setTimeout(() => {
     fullLoading.value = false
   }, 500)
 }
-
-// 切换图表
-const tabClick = (tab: any) => {
-  nowTabs.value = tab.props.name
-  // showChart()
-  userEchartRef.value.showChart()
-}
-
-// 获取地图信息
-const getMapInfo = (historyObj: BattleInfo) => {
-  if (
-    historyObj &&
-    historyObj.history &&
-    Array.isArray(historyObj.history) &&
-    !mapUrl.value
-  ) {
-    try {
-      mapUrl.value = historyObj.map_figure_url || ''
-      mapName.value = historyObj.map_name || ''
-      resultStatus.value = historyObj.status || ''
-      redSquare.value = historyObj.name1 || ''
-      blueSquare.value = historyObj.name2 || ''
-    } catch (error) {
-      mapUrl.value = ''
-      mapName.value = ''
-      resultStatus.value = ''
-      redSquare.value = ''
-      blueSquare.value = ''
-    }
-  }
-}
-
-
-const downloadDataToExcel = () => {
-  // 后期优化：数据层数太多，不好判断是否有数据，需要增加一个判断
-  if (groupList.value && groupList.value.length > 0) {
-    const {data, name} = handleExcelData(groupList.value, startTime.value, historyId.value)
-    window.ipcRenderer.send('saveExcel', data, name)
-  }
-}
-
-onMounted(() => {
-  const groupDataString = window.localStorage.getItem('groupData')
-  if (groupDataString) {
-    groupList.value = JSON.parse(groupDataString)
-    getHistoryArr()
-  }
-  if (groupList.value && groupList.value.length > 0) {
-    // showChart()
-    userEchartRef.value.showChart()
-  }
-})
 </script>
 
 <style scoped lang="scss">
@@ -196,6 +125,12 @@ onMounted(() => {
 
         &.fail {
           color: var(--el-color-danger);
+        }
+
+        &.time {
+          color: var(--el-text-color-secondary);
+          font-weight: 400;
+          font-size: 12px;
         }
       }
     }

@@ -1,6 +1,6 @@
 {
   "name": "bb-tools",
-  "version": "0.3.6",
+  "version": "0.3.9",
   "main": "dist-electron/main/index.js",
   "description": "崩崩数据分析工具",
   "author": "jcebd",
@@ -27,7 +27,7 @@
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.4",
     "electron": "^29.1.1",
-    "electron-builder": "^24.13.3",
+    "electron-builder": "24.13.1",
     "sass": "^1.83.0",
     "typescript": "^5.4.2",
     "unplugin-auto-import": "^0.19.0",
@@ -40,15 +40,12 @@
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
-    "axios": "^1.7.9",
+    "@vueuse/core": "^9.13.0",
     "echarts": "^5.6.0",
     "element-plus": "^2.9.1",
-    "fs": "0.0.1-security",
-    "lodash": "^4.17.21",
-    "md5": "^2.3.0",
     "node-xlsx": "^0.24.0",
+    "pinia": "^2.2.0",
     "vue-draggable-next": "^2.2.1",
-    "vue-router": "^4.5.0",
-    "vuex": "^4.1.0"
+    "vue-router": "^4.5.0"
   }
 }

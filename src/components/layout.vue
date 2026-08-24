@@ -50,15 +50,15 @@
 </template>
 
 <script setup lang="ts">
-import { defineOptions, ref, watch, computed } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import router from '@/router'
 import { ElLoading, ElMessageBox, ElMessage } from 'element-plus'
 import { PieChart, Odometer, DataLine, Help } from '@element-plus/icons-vue'
-// vuex
-import { useStore } from 'vuex'
+// pinia
+import { useAppStore, type UpdateInfo } from '@/store'
 import { updateToGithub } from '@/utils/update'
-const store = useStore()
+const store = useAppStore()
 defineOptions({
   name: 'Layout'
 })
@@ -69,7 +69,8 @@ const tipText = ref([
   '本工具旨在于帮助提升团员打团效率，请勿过度责怪团员',
   '和我打一辈子崩崩吧，我什么都会做的',
   '恢复全勤实物奖励！！！',
-  '广告位招租'
+  '广告位招租',
+  '是否有意愿增加相同功能的小程序，实现手机上查看和分享'
 ])
 
 const activeIndex = ref('')
@@ -90,13 +91,14 @@ function goto() {
 function toGit() {
   window.open('https://github.com/Icedb/bbTools')
 }
-const isUpdate = computed(() => store.state.isUpdate) // 0: 未检查或报错 1: 有新版本 2: 无新版本
+const isUpdate = computed(() => store.isUpdate) // 0: 未检查或报错 1: 有新版本 2: 无新版本
 
 function showUpdateMessage() {
+  const update = isUpdate.value as UpdateInfo
   // body做处理，在;或；后面加<br>
-  const body = isUpdate.value.body.replace(/;/g, ';<br />').replace(/；/g, '；<br />')
+  const body = update.body.replace(/;/g, ';<br />').replace(/；/g, '；<br />')
   ElMessageBox({
-    title: '有新版本' + isUpdate.value.version,
+    title: '有新版本' + update.version,
     dangerouslyUseHTMLString: true,
     message: body,
     showCancelButton: true,
@@ -104,14 +106,14 @@ function showUpdateMessage() {
     cancelButtonText: '取消',
     type: 'warning'
   }).then(() => {
-    window.open(isUpdate.value.downloadUrl)
+    window.open(update.downloadUrl)
   }).catch(() => {
     // console.log('取消')
   })
 }
 
 async function checkUpdate() {
-  // 修改vuex中的isUpdate
+  // 修改pinia中的isUpdate
   ElLoading.service({
     lock: true,
     text: '检查更新中...',
@@ -122,14 +124,14 @@ async function checkUpdate() {
     ElLoading.service().close()
     if (!result) {
       // 检查失败
-      store.dispatch('setIsUpdate', 0)
+      store.setIsUpdate(0)
       ElMessage({
         message: '检查失败，请稍后重试',
         type: 'error'
       });
       return
     }
-    store.dispatch('setIsUpdate', result)
+    store.setIsUpdate(result)
     if (result.code === 0) {
       showUpdateMessage()
     }

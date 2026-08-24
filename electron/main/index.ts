@@ -1,6 +1,7 @@
-import { app, BrowserWindow, shell, ipcMain, session, dialog } from 'electron'
+import { app, BrowserWindow, shell, ipcMain, session, dialog, safeStorage } from 'electron'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
+import fs from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
 
@@ -152,20 +153,52 @@ app.on('activate', () => {
   }
 })
 
-// New window example arg: new windows url
-ipcMain.handle('open-win', (_, arg) => {
-  const childWindow = new BrowserWindow({
-    webPreferences: {
-      preload,
-      nodeIntegration: true,
-      contextIsolation: false,
-    },
-  })
+// cookie 加密存储路径（随用户数据目录，不进 asar）
+const cookieFilePath = path.join(app.getPath('userData'), 'cookie.bin')
+// 文件首字节标记：1 = safeStorage 加密，0 = 降级明文（safeStorage 没有 isEncrypted 之类的判断 API，用标记位区分）
+const COOKIE_ENC_FLAG = Buffer.from([1])
+const COOKIE_PLAIN_FLAG = Buffer.from([0])
 
-  if (VITE_DEV_SERVER_URL) {
-    childWindow.loadURL(`${VITE_DEV_SERVER_URL}#${arg}`)
-  } else {
-    childWindow.loadFile(indexHtml, { hash: arg })
+// 保存 cookie：使用 safeStorage 加密后落盘，加密不可用时降级为普通文件（仍优于 localStorage 明文）
+ipcMain.handle('cookie:save', (_, cookie: string) => {
+  try {
+    if (cookie && safeStorage.isEncryptionAvailable()) {
+      fs.writeFileSync(cookieFilePath, Buffer.concat([COOKIE_ENC_FLAG, safeStorage.encryptString(cookie)]))
+    } else {
+      fs.writeFileSync(cookieFilePath, Buffer.concat([COOKIE_PLAIN_FLAG, Buffer.from(cookie, 'utf8')]))
+    }
+    return true
+  } catch (error) {
+    console.error('保存 cookie 失败:', error)
+    return false
+  }
+})
+
+// 读取 cookie：按首字节标记自动识别加密内容并解密；无标记的旧格式文件先按旧密文尝试解密，失败再按明文返回
+ipcMain.handle('cookie:load', () => {
+  try {
+    if (!fs.existsSync(cookieFilePath)) return ''
+    const buffer = fs.readFileSync(cookieFilePath)
+    if (buffer.length === 0) return ''
+    const flag = buffer[0]
+    if (flag === COOKIE_ENC_FLAG[0] || flag === COOKIE_PLAIN_FLAG[0]) {
+      // 新格式：首字节为标记位
+      return flag === COOKIE_ENC_FLAG[0]
+        ? safeStorage.decryptString(buffer.subarray(1))
+        : buffer.subarray(1).toString('utf8')
+    }
+    // 旧格式（无标记）：可能是 safeStorage 裸密文，也可能是降级明文
+    if (safeStorage.isEncryptionAvailable()) {
+      try {
+        return safeStorage.decryptString(buffer)
+      } catch {
+        // 非法密文，按明文处理
+      }
+    }
+    return buffer.toString('utf8')
+  } catch (error) {
+    console.error('读取 cookie 失败:', error)
+    return ''
   }
 })
 
@@ -173,6 +206,104 @@ ipcMain.handle('open-win', (_, arg) => {
 ipcMain.on('getServer', (event, arg) => {
   const serverList = getServerList();
   event.reply('getServer-reply', serverList)
+})
+
+// ========== 分组数据文件化存储（userData 目录，不进 asar） ==========
+// 保存时自动生成带时间戳备份，保留最近 BACKUP_KEEP 份
+const dataFilePath = path.join(app.getPath('userData'), 'groupData.json')
+const BACKUP_PREFIX = 'groupData-'
+const BACKUP_KEEP = 20
+
+const formatStamp = (d: Date) => {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`
+}
+
+// 自动备份：复制当前数据文件为带时间戳的备份，并清理超出保留份数的旧备份
+const backupDataFile = () => {
+  try {
+    if (!fs.existsSync(dataFilePath)) return
+    const backupDir = app.getPath('userData')
+    fs.copyFileSync(dataFilePath, path.join(backupDir, `${BACKUP_PREFIX}${formatStamp(new Date())}.json`))
+    const backups = fs.readdirSync(backupDir)
+      .filter((f) => f.startsWith(BACKUP_PREFIX) && f.endsWith('.json'))
+      .sort()
+      .reverse()
+    for (const old of backups.slice(BACKUP_KEEP)) {
+      fs.rmSync(path.join(backupDir, old), { force: true })
+    }
+  } catch (error) {
+    console.error('自动备份失败:', error)
+  }
+}
+
+// 保存分组数据（保存前自动备份）
+ipcMain.handle('data:save', (_, data: string) => {
+  try {
+    if (fs.existsSync(dataFilePath)) backupDataFile()
+    fs.writeFileSync(dataFilePath, data, 'utf8')
+    return true
+  } catch (error) {
+    console.error('保存分组数据失败:', error)
+    return false
+  }
+})
+
+// 读取分组数据
+ipcMain.handle('data:load', () => {
+  try {
+    if (!fs.existsSync(dataFilePath)) return ''
+    return fs.readFileSync(dataFilePath, 'utf8')
+  } catch (error) {
+    console.error('读取分组数据失败:', error)
+    return ''
+  }
+})
+
+// 列出所有备份（名称 + 修改时间，按时间倒序）
+ipcMain.handle('data:listBackups', () => {
+  try {
+    const dir = app.getPath('userData')
+    return fs.readdirSync(dir)
+      .filter((f) => f.startsWith(BACKUP_PREFIX) && f.endsWith('.json'))
+      .map((f) => {
+        const stat = fs.statSync(path.join(dir, f))
+        return { name: f, time: stat.mtime.getTime() }
+      })
+      .sort((a, b) => b.time - a.time)
+  } catch (error) {
+    console.error('列出备份失败:', error)
+    return []
+  }
+})
+
+// 还原指定备份
+ipcMain.handle('data:restore', (_, name: string) => {
+  try {
+    const file = path.join(app.getPath('userData'), name)
+    if (!fs.existsSync(file)) return ''
+    return fs.readFileSync(file, 'utf8')
+  } catch (error) {
+    console.error('还原备份失败:', error)
+    return ''
+  }
+})
+
+// 删除指定备份（仅允许删除备份前缀文件，防止任意路径删除）
+ipcMain.handle('data:deleteBackup', (_, name: string) => {
+  try {
+    if (!name.startsWith(BACKUP_PREFIX) || !name.endsWith('.json')) {
+      console.error('非法备份文件名:', name)
+      return false
+    }
+    const file = path.join(app.getPath('userData'), name)
+    if (!fs.existsSync(file)) return false
+    fs.rmSync(file, { force: true })
+    return true
+  } catch (error) {
+    console.error('删除备份失败:', error)
+    return false
+  }
 })
 
 // 获取崩崩数据
@@ -206,6 +337,7 @@ ipcMain.on('saveExcel', (event, arg, fileName) => {
     sendMsg(win, '保存成功', 'success')
   }).catch((error) => {
     if (error !== 'canceled') {
+      console.error('保存 excel 失败:', error)
       sendMsg(win, '保存失败', 'error')
     }
   })
@@ -230,6 +362,7 @@ ipcMain.on('downloadTemplateFile', () => {
     sendMsg(win, '保存成功', 'success')
   }).catch((error) => {
     if (error !== 'canceled') {
+      console.error('下载模板失败:', error)
       sendMsg(win, '保存失败', 'error')
     }
   })

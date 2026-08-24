@@ -18,6 +18,8 @@ export default defineConfig(({ command }) => {
   const sourcemap = isServe || !!process.env.VSCODE_DEBUG
 
   return {
+    // 相对路径，保证打包后 loadFile(file://) 协议下静态资源与路由懒加载分包可正常加载
+    base: './',
     plugins: [
       vue(),
       electron({
@@ -41,7 +43,9 @@ export default defineConfig(({ command }) => {
                 // we can use `external` to exclude them to ensure they work correctly.
                 // Others need to put them in `dependencies` to ensure they are collected into `app.asar` after the app is built.
                 // Of course, this is not absolute, just this way is relatively simple. :)
-                external: Object.keys('dependencies' in pkg ? pkg.dependencies : {}),
+                // node-xlsx 不 external：其依赖 xlsx 走 sheetjs CDN tarball，electron-builder 收集不进 asar，
+                // 直接让 vite 把 node-xlsx + xlsx 内联打进 main bundle，运行时无需 node_modules 中的 xlsx。
+                external: Object.keys('dependencies' in pkg ? pkg.dependencies : {}).filter((dep) => dep !== 'node-xlsx'),
               },
             },
           },
@@ -77,6 +81,14 @@ export default defineConfig(({ command }) => {
     ],
     define: {
       __APP_VERSION__: JSON.stringify(process.env.npm_package_version),
+    },
+    css: {
+      preprocessorOptions: {
+        scss: {
+          // 使用 modern API 编译，避免 legacy JS API 弃用警告
+          api: 'modern-compiler'
+        }
+      }
     },
     server: process.env.VSCODE_DEBUG && (() => {
       const url = new URL(pkg.debug.env.VITE_DEV_SERVER_URL)

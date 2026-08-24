@@ -5,7 +5,18 @@ import { app, dialog, BrowserWindow } from 'electron'
 import fs from 'fs'
 import { loadExcel, saveExcel } from './excel'
 
-// 获取配置文件地址
+// 配置文件相关类型
+interface ServerConfig {
+  name: string
+  value: string
+  display?: boolean
+}
+
+interface AppConfig {
+  version: string
+  servers: ServerConfig[]
+}
+
 // 获取配置文件地址
 let userData = app ? app.getPath('userData') : ''
 const filePath = `${userData}\\serverData.json`
@@ -90,7 +101,7 @@ const compareVersions = (version1: string, version2: string): number => {
 }
 
 // 配置合并策略
-const mergeConfigs = (userConfig: any, defaultConfig: any) => {
+const mergeConfigs = (userConfig: Partial<AppConfig> | null, defaultConfig: AppConfig): AppConfig => {
   if (!userConfig) {
     return defaultConfig;
   }
@@ -164,7 +175,8 @@ const loadExcelData = () => {
       ]
     })
     if (!filePaths || filePaths.length === 0) {
-      return []
+      // 用户取消选择：返回 null 与"选了文件但无数据（[]）"区分开，渲染层据此静默处理
+      return null
     }
     const path = filePaths[0]
     const workSheetsFromFile = loadExcel(path)
@@ -220,32 +232,25 @@ const loadExcelData = () => {
   }
 }
 
-// 保存文件，调用showOpenDialogSync获取保存路径，然后将文件流写入
-const saveFile = (
+// 保存文件，调用showSaveDialog获取保存路径，然后将文件流写入
+const saveFile = async (
   dataBuffer: Buffer,
   fileName: string,
   extensions: string[] | string
 ): Promise<void> => {
-  return new Promise(async (resolve, reject) => {
-    try {
-      if (!Array.isArray(extensions)) {
-        extensions = [extensions];
-      }
-      const filePaths = await dialog.showSaveDialog({
-        title: '保存文件',
-        defaultPath: fileName,
-        filters: [{ name: 'Excel', extensions }]
-      });
-      if (filePaths.canceled || !filePaths.filePath) {
-        return reject('canceled');
-      }
-      await fs.promises.writeFile(filePaths.filePath, dataBuffer);
-      resolve();
-    } catch (error) {
-      console.log(error);
-      reject(error);
-    }
+  if (!Array.isArray(extensions)) {
+    extensions = [extensions];
+  }
+  const result = await dialog.showSaveDialog({
+    title: '保存文件',
+    defaultPath: fileName,
+    filters: [{ name: 'Excel', extensions }]
   });
+  if (result.canceled || !result.filePath) {
+    // 与旧版行为保持一致：取消时以 'canceled' 拒绝，调用方据此区分用户取消
+    throw 'canceled';
+  }
+  await fs.promises.writeFile(result.filePath, dataBuffer);
 };
 
 // 保存excel

@@ -3,15 +3,16 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch, defineProps, defineExpose, defineOptions } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch, defineProps, defineExpose } from 'vue'
 import * as echarts from 'echarts/core'
-import { BarChart, LineChart } from 'echarts/charts'
+import { BarChart, LineChart, HeatmapChart } from 'echarts/charts'
 import {
   TooltipComponent,
   LegendComponent,
   GraphicComponent,
   GridComponent,
-  DataZoomComponent
+  DataZoomComponent,
+  VisualMapComponent
 } from 'echarts/components'
 import { LabelLayout } from 'echarts/features'
 import { CanvasRenderer } from 'echarts/renderers'
@@ -49,11 +50,13 @@ defineExpose({
 echarts.use([
   BarChart,
   LineChart,
+  HeatmapChart,
   GraphicComponent,
   TooltipComponent,
   LegendComponent,
   GridComponent,
   DataZoomComponent,
+  VisualMapComponent,
   LabelLayout,
   CanvasRenderer
 ])

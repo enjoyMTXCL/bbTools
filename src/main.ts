@@ -1,26 +1,7 @@
-// import { createApp } from 'vue'
-// import App from './App.vue'
-
-// import './style.css'
-
-// import './demos/ipc'
-// // If you want use Node.js, the`nodeIntegration` needs to be enabled in the Main process.
-// // import './demos/node'
-
-// createApp(App)
-//   .mount('#app')
-//   .$nextTick(() => {
-//     postMessage({ payload: 'removeLoading' }, '*')
-//   })
-
-
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
-import store from './store'
-
-// import { Request } from '@/api/request';
-// import VueAxios from 'vue-axios'
+import { createPinia } from 'pinia'
 
 import Layout from "./components/layout.vue";
 
@@ -37,9 +18,7 @@ useDark()
 
 const app = createApp(App)
 
-app.use(store);
-// app.use(router).use(VueAxios, Request.init())
+app.use(createPinia());
 app.use(router)
-
 
 app.component('Layout', Layout).mount('#app')

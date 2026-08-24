@@ -5,8 +5,8 @@
         <el-col :lg="10" :xs="24">
           <div class="map-box">
             <div class="select-box">
-              <p>{{ mapName }}</p>
-              <el-link type="primary" @click="downloadDataToExcel" :icon="Download">下载团本数据</el-link>
+              <p>{{ mapName }}<span v-if="battleTime" class="time">（{{ battleTime }}）</span></p>
+              <el-link type="primary" @click="downloadDataToExcel()" :icon="Download">下载团本数据</el-link>
             </div>
             <img :src="mapUrl" alt="团本地图" style="width:100%;" v-show="mapUrl">
           </div>
@@ -15,7 +15,7 @@
           <user-info :groupList="groupList" :startTime="startTime" v-model="nowTabs" groupType="level" @tabClick="tabClick" />
         </el-col>
       </el-row>
-      <user-echart :groupList="groupList" :mapName="mapName" :startTime="startTime" groupType="level"
+      <user-echart :groupList="groupList" :mapName="mapName" :startTime="startTime" :battleTime="battleTime" groupType="level"
       v-model="nowTabs" @tabClick="tabClick" @getMapInfo="getMapInfo" ref="userEchartRef" />
     </div>
   </el-scrollbar>
@@ -24,94 +24,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { ElMessageBox } from 'element-plus'
 import {
   Download
 } from "@element-plus/icons-vue";
 import userInfo from '@/components/userInfo.vue';
 import userEchart from '@/components/userEchart.vue';
-import { handleExcelData } from '@/utils/index'
 
-import { GroupItem, BattleInfo } from '@/types/analysis'
+import { useAnalysis } from '@/composables/useAnalysis'
 
-// ========== 生命周期和变量 ==========
-const groupList = ref<GroupItem[]>()
-const mapUrl = ref('')
-const mapName = ref('')
-const resultStatus = ref()
-const startTime = ref(0)
-const fullLoading = ref(false)
-// let nowTabs = 0
-const nowTabs = ref(0)
-
-// 图表显示配置
-const userEchartRef = ref()
-
-// ========== 功能函数 ==========
-const solveTimeBug = () => {
-  const regPos = /^[0-9]+.?[0-9]*/
-  ElMessageBox.prompt('解决官方时间超长bug，这里输入初始时间（单位：分钟）。详见：帮助-常见问题-5', '解决官方时间超长问题', {
-    confirmButtonText: '确认',
-    cancelButtonText: '取消'
-  }).then(({ value }) => {
-    if (value && regPos.test(value)) {
-      startTime.value = Number(value) * 60
-      // showChart()
-      userEchartRef.value.showChart()
-    }
-  }).catch(() => {
-    // 用户取消操作，不做处理
-  })
-}
-
-// ========== 事件函数 ==========
-
-// 切换图表
-const tabClick = (tab: any) => {
-  nowTabs.value = tab.props.name
-  // showChart()
-  userEchartRef.value.showChart()
-}
-
-// 获取地图信息
-const getMapInfo = (historyObj: BattleInfo) => {
-  if (
-    historyObj &&
-    historyObj.history &&
-    Array.isArray(historyObj.history) &&
-    !mapUrl.value
-  ) {
-    try {
-      mapUrl.value = historyObj.map_figure_url || ''
-      mapName.value = historyObj.map_name || ''
-    } catch (error) {
-      mapUrl.value = ''
-      mapName.value = ''
-      resultStatus.value = ''
-    }
-  }
-}
-
-
-const downloadDataToExcel = () => {
-  // 后期优化：数据层数太多，不好判断是否有数据，需要增加一个判断
-  if (groupList.value && groupList.value.length > 0) {
-    const {data, name} = handleExcelData(groupList.value, startTime.value)
-    window.ipcRenderer.send('saveExcel', data, name)
-  }
-}
-
-onMounted(() => {
-  const groupDataString = window.localStorage.getItem('groupData')
-  if (groupDataString) {
-    groupList.value = JSON.parse(groupDataString)
-  }
-  if (groupList.value && groupList.value.length > 0) {
-    // showChart()
-    userEchartRef.value.showChart()
-  }
-})
+// ========== 公共逻辑（含 onMounted 数据加载） ==========
+const {
+  groupList, mapUrl, mapName, battleTime, startTime, fullLoading, nowTabs, userEchartRef,
+  solveTimeBug, tabClick, getMapInfo, downloadDataToExcel
+} = useAnalysis()
 </script>
 
 <style scoped lang="scss">
@@ -132,6 +57,12 @@ onMounted(() => {
       padding: 0 4px;
       p{
         font-weight: bold;
+
+        .time {
+          color: var(--el-text-color-secondary);
+          font-weight: 400;
+          font-size: 12px;
+        }
       }
     }
 

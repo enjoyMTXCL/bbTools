@@ -21,11 +21,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, nextTick } from 'vue';
 import charts from './echarts.vue'
 import { Download } from '@element-plus/icons-vue'
-import { GroupItem, ChartOptionItem, PeopleData } from '@/types/analysis'
-import { battleLetter, levelLetter, formatTime, contributeCompute } from '@/utils/index'
+import { GroupItem, ChartOptionItem } from '@/types/analysis'
+import { formatTime, contributeCompute } from '@/utils/index'
+import { useGroupTabs } from '@/composables/useGroupTabs'
 
 const props = defineProps({
   groupList: {
@@ -52,6 +53,10 @@ const props = defineProps({
     type: String,
     default: ''
   },
+  battleTime: {
+    type: String,
+    default: ''
+  },
   modelValue: {
     type: Number,
     default: 0
@@ -64,48 +69,23 @@ const props = defineProps({
 
 const emit = defineEmits(['tabClick', 'update:modelValue', 'getMapInfo'])
 
-const nowTabs = computed({
-  get: () => props.modelValue,
-  set: val => {
-    emit("update:modelValue", val);
-  },
-});
-
-const tabClick = (tab: any) => {
-  emit('tabClick', tab)
-  // showChart()
-}
-
-const getGroupData = (people: PeopleData) => {
-  if (props.groupType === 'battle') {
-    return people.profile?.battle_info?.history[props.historyId] || [];
-  } else {
-    return people.profile?.level_info || [];
-  }
-};
-
-const letter = computed(() => {
-  if (props.groupType === 'battle') {
-    return battleLetter
-  } else {
-    return levelLetter
-  }
-})
+const { getGroupData, letter, nowTabs, tabClick } = useGroupTabs(props, emit)
 
 // 显示图表
-const showChart = () => {
-  // 赋值时机问题导致，数值更改后并不能同时赋值props内容，所以加个等待时间，之后优化
-  setTimeout(() => {
-    option.value = null
-    if (!props.groupList || props.groupList.length === 0) return
-    let chartData
-    if (nowCharts.value === 'bar') {
-      chartData = showBarChart(props.groupList[nowTabs.value])
-    } else {
-      chartData = showLineChart(props.groupList[nowTabs.value])
-    }
-    option.value = chartData
-  }, 1)
+const showChart = async () => {
+  // 等待响应式状态（v-model/props）更新完成后再取值渲染图表
+  await nextTick()
+  option.value = null
+  if (!props.groupList || props.groupList.length === 0) return
+  let chartData
+  if (nowCharts.value === 'bar') {
+    chartData = showBarChart(props.groupList[nowTabs.value])
+  } else if (nowCharts.value === 'heatmap') {
+    chartData = showHeatmapChart(props.groupList[nowTabs.value])
+  } else {
+    chartData = showLineChart(props.groupList[nowTabs.value])
+  }
+  option.value = chartData
 }
 // showChart开放给父组件
 defineExpose({ showChart })
@@ -113,7 +93,7 @@ defineExpose({ showChart })
 
 const option = ref()
 const chartRef = ref()
-const nowCharts = ref<'bar' | 'line'>('line')
+const nowCharts = ref<'bar' | 'line' | 'heatmap'>('line')
 const chartOptions = ref<Record<string, ChartOptionItem>>({
   bar: {
     name: '柱状图',
@@ -122,6 +102,10 @@ const chartOptions = ref<Record<string, ChartOptionItem>>({
   line: {
     name: '折线图',
     desc: 'X轴为进点时间；Y轴为进攻点位；可对比成员打点情况'
+  },
+  heatmap: {
+    name: '点位热力图',
+    desc: 'X轴为小队成员；Y轴为进攻点位；颜色深浅代表该点位同步率多少'
   }
 })
 // 图表配置
@@ -170,7 +154,9 @@ const chartGrid = {
 // 图表下载
 const downloadChart = () => {
   if (option.value && props.groupList) {
-    let picName = `${props.redSquare} VS ${props.blueSquare} ${props.mapName}-${props.groupList[nowTabs.value].groupName}`
+    // 文件名中不能含 Windows 非法字符（如冒号），时间里的 : 替换为下划线（20:00 → 20_00）
+    const timeSuffix = props.battleTime ? ' ' + props.battleTime.replace(/:/g, '_') : ''
+    let picName = `${props.redSquare} VS ${props.blueSquare} ${props.mapName}${timeSuffix}-${props.groupList[nowTabs.value].groupName}`
     chartRef.value.downloadChart(picName)
   }
 }
@@ -261,6 +247,7 @@ const showBarChart = (res: GroupItem) => {
             data: [],
             type: 'bar',
             barGap: '20%',
+            barCategoryGap: '30%',
             label: labelOption,
             barMinHeight: 10,
             itemStyle: {
@@ -268,6 +255,7 @@ const showBarChart = (res: GroupItem) => {
                 return barColor[params.name] || '#5470c6'
               },
               borderType: 'solid',
+              borderRadius: [4, 4, 0, 0],
               // borderColor: '#fff'
             },
             stack: 'x'
@@ -293,12 +281,14 @@ const showBarChart = (res: GroupItem) => {
           data: [],
           type: 'bar',
           barGap: '20%',
+          barCategoryGap: '30%',
           label: labelOption,
           itemStyle: {
             color(params: any) {
               return barColor[params.name] || '#5470c6'
             },
             borderType: 'solid',
+            borderRadius: [4, 4, 0, 0],
             // borderColor: '#fff'
           },
           stack: 'x'
@@ -340,6 +330,12 @@ const showLineChart = (res: GroupItem) => {
   const lineData: any = {
     // backgroundColor: '#fff',
     grid: chartGrid,
+    // 30 色循环配色，成员超过 30 名时自动从头循环
+    color: [
+      '#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de', '#3ba272', '#fc8452', '#9a60b4', '#ea7ccc', '#e06343',
+      '#37a354', '#b55cba', '#2c9f5e', '#c8506e', '#5b9bd5', '#7f7f7f', '#bc80bd', '#8dd3c7', '#bebada', '#fb8072',
+      '#80b1d3', '#fdb462', '#b3de69', '#fccde5', '#d9d9d9', '#ccebc5', '#ffed6f', '#a6cee3', '#1f78b4', '#33a02c'
+    ],
     legend: {
       data: <string[]>[],
       top: '4%',
@@ -407,11 +403,99 @@ const showLineChart = (res: GroupItem) => {
     lineData.series[i] = {
       name: peopleData.name,
       type: 'line',
-      data: line
+      data: line,
+      symbol: 'circle',
+      symbolSize: 7,
+      lineStyle: { width: 2.5 },
+      areaStyle: { opacity: 0.12 },
+      emphasis: { focus: 'series' }
     }
   }
 
   return lineData
+}
+
+// 点位热力图：X 轴为成员（名称过长时旋转展示），Y 轴为点位，颜色深浅代表该点位总同步率
+const showHeatmapChart = (res: GroupItem) => {
+  const members: string[] = []
+  const points: string[] = []
+  const heatData: [string, string, number][] = []
+
+  for (const people of res.group) {
+    const historyObj = getGroupData(people)
+    const memberName = people.name || '成员占位'
+    members.push(memberName)
+    const history = historyObj?.history
+    if (!history || !history.length) continue
+    // 按点位聚合：该成员在每个点位的总同步率（contribute_rate 为十分比，展示统一除以 10）
+    const rateMap: Record<string, number> = {}
+    for (const h of history) {
+      const lv = letter.value[h.level_id]
+      if (!lv) continue
+      rateMap[lv] = (rateMap[lv] || 0) + h.contribute_rate
+    }
+    for (const lv in rateMap) {
+      if (!points.includes(lv)) points.push(lv)
+      heatData.push([memberName, lv, contributeCompute(rateMap[lv])])
+    }
+  }
+
+  const heatmapTooltip = {
+    formatter(params: any) {
+      if (!params.data) return ''
+      return `${params.data[0]} 在 ${params.data[1]} 点，总同步率 ${params.data[2]}%`
+    }
+  }
+
+  // 同步率为十分比换算后范围 0-10，max 取数据最大值上浮，保证色带对比明显
+  const maxRate = Math.max(10, ...heatData.map((d) => d[2]))
+
+  return {
+    grid: chartGrid,
+    tooltip: heatmapTooltip,
+    xAxis: {
+      type: 'category',
+      name: '成员',
+      data: members,
+      splitArea: { show: true },
+      axisLabel: { interval: 0, rotate: 45, fontSize: 11 }
+    },
+    yAxis: {
+      type: 'category',
+      name: '点位',
+      data: points,
+      splitArea: { show: true }
+    },
+    visualMap: {
+      min: 0,
+      max: maxRate,
+      calculable: true,
+      orient: 'horizontal',
+      left: 'center',
+      bottom: 0,
+      text: ['同步率高', '低'],
+      textStyle: { fontSize: 11 },
+      inRange: { color: ['#d0e1f9', '#1e6fb9'] }
+    },
+    series: [{
+      type: 'heatmap',
+      data: heatData,
+      itemStyle: {
+        borderColor: '#fff',
+        borderWidth: 2,
+        borderRadius: 4
+      },
+      label: {
+        show: true,
+        fontSize: 10,
+        formatter: (params: any) => (params.data ? `${params.data[2]}%` : '')
+      },
+      emphasis: {
+        itemStyle: { shadowBlur: 8, shadowColor: 'rgba(0,0,0,0.4)' }
+      }
+    }],
+    graphic
+  }
 }
 
 </script>

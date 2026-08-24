@@ -10,10 +10,14 @@ const HEADERS = {
   Cookie: "",
 };
 
-function getBBData(query, cookie) {
-  const res = fetch(`https://api-takumi-record.mihoyo.com/game_record/app/bh2/api/society/get_profile?${new URLSearchParams(query)}`, {
+interface BBQuery {
+  role_id: number | string;
+  server: string;
+}
+
+function getBBData(query: BBQuery, cookie: string) {
+  const res = fetch(`https://api-takumi-record.mihoyo.com/game_record/app/bh2/api/society/get_profile?${new URLSearchParams(query as Record<string, string>)}`, {
     method: "GET",
-    // qs: query,
     headers: { ...HEADERS, DS: getDS(query), Cookie: cookie ? cookie : ''},
   }).then((res) => res.json());
   return res;

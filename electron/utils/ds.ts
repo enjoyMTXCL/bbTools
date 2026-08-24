@@ -1,4 +1,5 @@
-import md5 from "md5";
+import { createHash } from 'node:crypto'
+import { DS_SALT } from './config'
 
 function randomString(length: number) {
   const characters =
@@ -13,8 +14,8 @@ function randomString(length: number) {
   return result;
 }
 
-function getQueryParam(data: any) {
-  let arr = [];
+function getQueryParam(data: Record<string, unknown> | undefined) {
+  let arr: string[] = [];
 
   if (undefined === data) {
     return "";
@@ -27,14 +28,14 @@ function getQueryParam(data: any) {
   return arr.join("&");
 }
 
-function getDS(query: any, body = "") {
-  const n = "xV8v4Qu54lUKrEYFZkJhB8cuOh9Asafs";
+function getDS(query?: Record<string, unknown>, body = "") {
   const i = (Date.now() / 1000) | 0;
   const r = randomString(6);
   const q = getQueryParam(query);
-  const c = md5(`salt=${n}&t=${i}&r=${r}&b=${body}&q=${q}`);
+  const c = createHash('md5')
+    .update(`salt=${DS_SALT}&t=${i}&r=${r}&b=${body}&q=${q}`)
+    .digest('hex');
   return `${i},${r},${c}`;
 }
 
 export default getDS;
-

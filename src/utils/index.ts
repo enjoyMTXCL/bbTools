@@ -1,5 +1,4 @@
-import { divide } from 'lodash'
-import { GroupItem } from '@/types/analysis'
+import { GroupItem, HistoryItem } from '@/types/analysis'
 
 // 进攻点位对应字母
 const battleLetter: Record<number, string> = {
@@ -31,14 +30,22 @@ const levelLetter: Record<number, string> = {
 
 // 贡献计算
 const contributeCompute = (a: number) => {
-  return divide(a, 10)
+  return a / 10
 }
 
 // 时间计算
 const formatTime = (times: number) => {
-  const m = Math.floor(divide(times, 60))
+  const m = Math.floor(times / 60)
   const s = times % 60
   return m + '分' + s + '秒'
+}
+
+// 时间戳（unix 秒）→ 'YYYY-MM-DD HH:mm'，空值返回空串
+const formatDateTime = (timestamp?: number) => {
+  if (!timestamp) return ''
+  const d = new Date(timestamp * 1000)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 // 处理excel数据
@@ -48,6 +55,7 @@ const handleExcelData = (groupList: GroupItem[], startTime: number, historyId?: 
   let redSquare = ''
   let blueSquare = ''
   let mapName = ''
+  let battleTime = ''
   const data = groupList.map((group) => {
     let headerArr = ['昵称']
     let headerNum = 0
@@ -55,15 +63,23 @@ const handleExcelData = (groupList: GroupItem[], startTime: number, historyId?: 
       if (!teamName) {
         teamName = people.profile?.name || ''
       }
-      let historyObj;
+      let historyObj: HistoryItem[];
       if (historyId !== undefined) {
-        historyObj = people.profile?.battle_info?.history[historyId]?.history || { history: [] }
-        redSquare = people.profile?.battle_info?.history[historyId]?.name1 || ''
-        blueSquare = people.profile?.battle_info?.history[historyId]?.name2 || ''
-        mapName = people.profile?.battle_info?.history[historyId]?.map_name || ''
+        const battleInfo = people.profile?.battle_info?.history[historyId]
+        const battleHistory = battleInfo?.history
+        historyObj = Array.isArray(battleHistory) ? battleHistory : []
+        // 双方团名与战斗时间取首个有效值（避免最后成员无数据时覆盖为空）
+        // 团战 endtime 为 22 点结束时间，统一减 2 小时显示 20 点开始时间
+        if (!redSquare) redSquare = battleInfo?.name1 || ''
+        if (!blueSquare) blueSquare = battleInfo?.name2 || ''
+        if (!mapName) mapName = battleInfo?.map_name || ''
+        if (!battleTime) battleTime = formatDateTime(battleInfo?.endtime ? battleInfo.endtime - 2 * 60 * 60 : undefined)
       } else {
-        historyObj = people.profile?.level_info?.history || []
-        mapName = people.profile?.level_info?.map_name || ''
+        const levelInfo = people.profile?.level_info
+        const levelHistory = levelInfo?.history
+        historyObj = Array.isArray(levelHistory) ? levelHistory : []
+        if (!mapName) mapName = levelInfo?.map_name || ''
+        if (!battleTime) battleTime = formatDateTime(levelInfo?.begin_time)
       }
 
       if (historyObj?.length) {
@@ -95,10 +111,12 @@ const handleExcelData = (groupList: GroupItem[], startTime: number, historyId?: 
   })
 
   let name;
+  // 文件名中不能含 Windows 非法字符（如冒号），时间里的 : 替换为下划线（20:00 → 20_00）
+  const timeSuffix = battleTime ? ' ' + battleTime.replace(/:/g, '_') : ''
   if (historyId !== undefined) {
-    name = `${redSquare} VS ${blueSquare} ${mapName}团战数据`
+    name = `${redSquare} VS ${blueSquare} ${mapName}${timeSuffix}团战数据`
   } else {
-    name = `${teamName}${mapName}团本数据`
+    name = `${teamName}${mapName}${timeSuffix}团本数据`
   }
   return {
     data,
@@ -111,5 +129,6 @@ export {
   levelLetter,
   contributeCompute,
   formatTime,
+  formatDateTime,
   handleExcelData
 }
