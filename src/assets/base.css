@@ -200,3 +200,25 @@ html.dark {
   --color-heading: var(--vt-c-text-dark-1);
   --color-text: var(--vt-c-text-dark-2);
 }
+
+/* ========== 更新提示弹窗：加宽 + 限高 + 内容区内滚动 ========== */
+.update-message-box {
+  width: 600px !important;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.update-message-box .el-message-box__content {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.update-message-box .el-message-box__message {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 52vh;
+  padding-right: 4px;
+}
+

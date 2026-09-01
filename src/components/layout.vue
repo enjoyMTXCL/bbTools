@@ -54,7 +54,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import router from '@/router'
 import { ElLoading, ElMessageBox, ElMessage } from 'element-plus'
@@ -99,6 +99,30 @@ const openSettings = () => {
   settingsDialogRef.value?.open()
 }
 
+// ========== 关闭确认（替代系统默认提示框） ==========
+const handleCloseConfirm = () => {
+  ElMessageBox.confirm('确定要退出吗？', '退出确认', {
+    confirmButtonText: '退出',
+    cancelButtonText: '取消',
+    type: 'warning',
+    closeOnClickModal: false
+  })
+    .then(() => {
+      window.ipcRenderer.send('app:close-confirmed')
+    })
+    .catch(() => {
+      // 用户取消退出，窗口保持
+    })
+}
+
+onMounted(() => {
+  window.ipcRenderer.on('app:confirm-close', handleCloseConfirm)
+})
+
+onBeforeUnmount(() => {
+  window.ipcRenderer.off('app:confirm-close', handleCloseConfirm)
+})
+
 function toGit() {
   window.open('https://github.com/Icedb/bbTools')
 }
@@ -106,10 +130,14 @@ const isUpdate = computed(() => store.isUpdate) // 0: 未检查或报错 1: 有�
 
 function showUpdateMessage() {
   const update = isUpdate.value as UpdateInfo
-  // body做处理，在;或；后面加<br>
-  const body = update.body.replace(/;/g, ';<br />').replace(/；/g, '；<br />')
+  // body做处理，换行转<br>，在;或；后面加<br>
+  const body = update.body
+    .replace(/\n/g, '<br />')
+    .replace(/;/g, ';<br />')
+    .replace(/；/g, '；<br />')
   ElMessageBox({
     title: '有新版本' + update.version,
+    customClass: 'update-message-box',
     dangerouslyUseHTMLString: true,
     message: body,
     showCancelButton: true,

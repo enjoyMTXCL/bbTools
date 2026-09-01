@@ -43,6 +43,8 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 let win: BrowserWindow | null = null
+// 关闭确认标志：渲染层确认退出后置为 true，放行窗口关闭
+let isCloseConfirmed = false
 const preload = path.join(__dirname, '../preload/index.mjs')
 const indexHtml = path.join(RENDERER_DIST, 'index.html')
 
@@ -102,23 +104,11 @@ async function createWindow() {
       }
     })
   })
-  // 关闭提示
-  win.on('close', e => {
-    e.preventDefault(); //先阻止一下默认行为，不然直接关了，提示框只会闪一下
-    dialog.showMessageBox({
-      type: 'info',
-      title: '提示',
-      message: '确认关闭？',
-      buttons: ['确认', '取消'],   //选择按钮，点击确认则下面的idx为0，取消为1
-      cancelId: 1, //这个的值是如果直接把提示框×掉返回的值，这里设置成和“取消”按钮一样的值，下面的idx也会是1
-    }).then(idx => {
-      if (idx.response == 1) {
-        e.preventDefault();
-      } else {
-        win = null
-        app.exit();
-      }
-    })
+  // 关闭确认：通知渲染层展示自定义确认弹窗（替代系统默认提示框）
+  win.on('close', (e) => {
+    if (isCloseConfirmed) return
+    e.preventDefault()
+    win?.webContents.send('app:confirm-close')
   });
 }
 
@@ -200,6 +190,12 @@ ipcMain.handle('cookie:load', () => {
     console.error('读取 cookie 失败:', error)
     return ''
   }
+})
+
+// 渲染层确认关闭后放行退出
+ipcMain.on('app:close-confirmed', () => {
+  isCloseConfirmed = true
+  win?.close()
 })
 
 // 读取服务器列表
