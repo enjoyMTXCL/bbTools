@@ -21,12 +21,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick } from 'vue';
+import { ref, nextTick, watch } from 'vue';
 import charts from './echarts.vue'
 import { Download } from '@element-plus/icons-vue'
 import { GroupItem, ChartOptionItem } from '@/types/analysis'
 import { formatTime, contributeCompute } from '@/utils/index'
 import { useGroupTabs } from '@/composables/useGroupTabs'
+import { settings, isWatermarkEnabled, getWatermarkText } from '@/utils/settings'
 
 const props = defineProps({
   groupList: {
@@ -90,6 +91,14 @@ const showChart = async () => {
 // showChart开放给父组件
 defineExpose({ showChart })
 
+// 水印开关/文字修改后立即刷新图表（无需重新进入页面）
+watch(
+  () => [settings.value.watermarkEnabled, settings.value.watermarkText],
+  () => {
+    showChart()
+  }
+)
+
 
 const option = ref()
 const chartRef = ref()
@@ -108,39 +117,42 @@ const chartOptions = ref<Record<string, ChartOptionItem>>({
     desc: 'X轴为小队成员；Y轴为进攻点位；颜色深浅代表该点位同步率多少'
   }
 })
-// 图表配置
-const graphic = [{
-  type: 'group',
-  left: 50,
-  bottom: 40,
-  z: 100,
-  children: [
-    {
-      type: 'rect',
-      left: 'center',
-      top: 'center',
-      z: 100,
-      shape: {
-        width: 200,
-        height: 30
+// 图表水印（由设置控制开关与文字，关闭时返回空数组）
+const buildGraphic = () => {
+  if (!isWatermarkEnabled()) return []
+  return [{
+    type: 'group',
+    left: 50,
+    bottom: 40,
+    z: 100,
+    children: [
+      {
+        type: 'rect',
+        left: 'center',
+        top: 'center',
+        z: 100,
+        shape: {
+          width: 200,
+          height: 30
+        },
+        style: {
+          fill: 'rgba(0,0,0,0.3)'
+        }
       },
-      style: {
-        fill: 'rgba(0,0,0,0.3)'
+      {
+        type: 'text',
+        left: 'center',
+        top: 'center',
+        z: 100,
+        style: {
+          fill: '#fff',
+          text: getWatermarkText(),
+          font: 'bold 14px sans-serif'
+        }
       }
-    },
-    {
-      type: 'text',
-      left: 'center',
-      top: 'center',
-      z: 100,
-      style: {
-        fill: '#fff',
-        text: 'BBTools：请勿过度责怪团员',
-        font: 'bold 14px sans-serif'
-      }
-    }
-  ]
-}]
+    ]
+  }]
+}
 // 图表选项
 const chartGrid = {
   left: 30,
@@ -227,7 +239,7 @@ const showBarChart = (res: GroupItem) => {
     },
     tooltip: barTooltip,
     series: [],
-    graphic
+    graphic: buildGraphic()
   }
 
   for (let i = 0; i < res.group.length; i++) {
@@ -373,7 +385,7 @@ const showLineChart = (res: GroupItem) => {
       }
     },
     series: <any>[],
-    graphic
+    graphic: buildGraphic()
   }
 
   for (let i = 0; i < res.group.length; i++) {
@@ -494,7 +506,7 @@ const showHeatmapChart = (res: GroupItem) => {
         itemStyle: { shadowBlur: 8, shadowColor: 'rgba(0,0,0,0.4)' }
       }
     }],
-    graphic
+    graphic: buildGraphic()
   }
 }
 

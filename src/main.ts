@@ -12,9 +12,8 @@ import "element-plus/theme-chalk/src/overlay.scss"
 import "element-plus/theme-chalk/src/loading.scss"
 import 'element-plus/theme-chalk/dark/css-vars.css'
 
-import { useDark } from '@vueuse/core'
-
-useDark()
+// 主题（浅色/深色/跟随系统）与自定义颜色由设置模块统一管理（settings.ts 加载时应用）
+import '@/utils/settings'
 
 const app = createApp(App)
 

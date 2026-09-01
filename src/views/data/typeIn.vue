@@ -24,8 +24,8 @@
           </el-icon>
         </el-col>
       </el-row>
-      <!-- 空状态引导：还没有任何成员时展示使用步骤 -->
-      <el-card v-if="!hasAnyPeople" shadow="never" class="guide-card">
+      <!-- 空状态引导：仅首次安装后第一次进入时展示（已看过/已使用后不再显示） -->
+      <el-card v-if="!hasAnyPeople && !guideSeen" shadow="never" class="guide-card">
         <template #header>
           <span class="guide-title">新手引导：三步完成数据录入</span>
         </template>
@@ -268,6 +268,7 @@ import type { ApiResult } from '@/utils/getData';
 import type { PeopleData } from '@/types/analysis';
 import { loadCookie, saveCookie } from '@/utils/cookieStorage';
 import { loadData, saveData, listBackups, restoreData, deleteBackup } from '@/utils/dataStorage';
+import { logError } from '@/utils/logger';
 import loadExcel from '@/utils/loadExcel';
 
 import {
@@ -327,6 +328,11 @@ let pendingNavigation: any = null;
  * 生命周期钩子
  */
 onMounted(() => {
+  // 首次进入页面即标记引导已看：本次仍显示，之后（含清空数据、更新版本）不再显示
+  if (!guideSeen.value) {
+    guideSeen.value = true;
+    window.localStorage.setItem(GUIDE_KEY, '1');
+  }
   serverName = <any>window.localStorage.getItem('serverName');
   const cL = <any>window.localStorage.getItem('cookieLock');
   cookieDisabled.value = cL == 'true';
@@ -520,7 +526,10 @@ const getUserData = (userData: PeopleData) => {
         return singleData;
       } else {
         cookieDisabled.value = false;
-        throw new Error(res.message || '获取数据失败');
+        // 把接口返回的 retcode 挂到错误对象上，供错误日志记录
+        const err = new Error(res.message || '获取数据失败') as Error & { retcode?: number };
+        err.retcode = res.retcode;
+        throw err;
       }
     }
   )
@@ -558,6 +567,9 @@ const refreshPeople = (
       userData.profile = null;
       if (error !== 'cancel') {
         ElMessage({ type: 'error', message: error.message });
+        // 请求出错记录到错误日志（设置页可导出），带上当前服务器与接口错误码
+        const err = error as Error & { retcode?: number };
+        logError(`单独获取成员 ${userData.name}(${userData.uid}) 失败（服务器：${serverName || '未选择'}，retcode：${err?.retcode ?? '未知'}）：${error.message}`);
       }
     });
 };
@@ -587,10 +599,14 @@ const fetchPeopleBatch = async (targets: PeopleData[], prefix: string) => {
         pData.profile = res || null;
         success++;
       } catch (error) {
-        pData.message = (error as Error)?.message || String(error);
+        const err = error as Error & { retcode?: number };
+        const msg = err?.message || String(error);
+        pData.message = msg;
         pData.profile = null;
         failed++;
         failedNames.push(pData.name);
+        // 请求出错记录到错误日志（设置页可导出），带上当前服务器与接口错误码
+        logError(`获取成员 ${pData.name}(${pData.uid}) 失败（服务器：${serverName || '未选择'}，retcode：${err?.retcode ?? '未知'}）：${msg}`);
       }
     }));
     const done = Math.min(i + CONCURRENCY, targets.length);
@@ -876,6 +892,9 @@ const filteredGroupList = computed(() => {
 
 // ========== 空状态引导 ==========
 const hasAnyPeople = computed(() => groupList.value.some((g) => g.group.length > 0));
+// 仅首次安装后第一次进入页面时显示引导，进入后即标记为已看（后续空状态/更新版本不再显示）
+const GUIDE_KEY = 'typeInGuideSeen';
+const guideSeen = ref(window.localStorage.getItem(GUIDE_KEY) === '1');
 
 // 上传
 const uploadExcel = () => {

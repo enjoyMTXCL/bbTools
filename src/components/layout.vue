@@ -30,6 +30,9 @@
                 <el-icon :size="14"><Help /></el-icon>
                 帮助</el-menu-item>
             </el-menu>
+            <el-tooltip content="设置" placement="bottom">
+              <el-icon :size="20" class="setting-icon" @click="openSettings"><Setting /></el-icon>
+            </el-tooltip>
             <img @click="toGit" src="@/assets/images/github.png" alt="github" class="github" />
           </div>
         </div>
@@ -47,6 +50,7 @@
       </p>
     </el-footer>
   </el-container>
+  <settings-dialog ref="settingsDialogRef" />
 </template>
 
 <script setup lang="ts">
@@ -54,10 +58,11 @@ import { ref, watch, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import router from '@/router'
 import { ElLoading, ElMessageBox, ElMessage } from 'element-plus'
-import { PieChart, Odometer, DataLine, Help } from '@element-plus/icons-vue'
+import { PieChart, Odometer, DataLine, Help, Setting } from '@element-plus/icons-vue'
 // pinia
 import { useAppStore, type UpdateInfo } from '@/store'
 import { updateToGithub } from '@/utils/update'
+import settingsDialog from './settingsDialog.vue'
 const store = useAppStore()
 defineOptions({
   name: 'Layout'
@@ -86,6 +91,12 @@ watch(
 
 function goto() {
   router.push('/')
+}
+
+// 打开设置弹窗
+const settingsDialogRef = ref()
+const openSettings = () => {
+  settingsDialogRef.value?.open()
 }
 
 function toGit() {
@@ -191,11 +202,27 @@ async function checkUpdate() {
     .affix-right{
       display: flex;
       align-items: center;
+      .setting-icon{
+        color: #fff;
+        margin-left: 10px;
+        cursor: pointer;
+        transition: transform 0.2s;
+
+        &:hover {
+          transform: scale(1.1);
+        }
+      }
       .github{
         margin-left: 10px;
         width: 26px;
         height: 26px;
         cursor: pointer;
+        border-radius: 50%;
+        transition: transform 0.2s;
+
+        &:hover {
+          transform: scale(1.1);
+        }
       }
     }
   }

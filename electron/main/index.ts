@@ -306,6 +306,61 @@ ipcMain.handle('data:deleteBackup', (_, name: string) => {
   }
 })
 
+// ========== 错误日志（userData/logs，超 5M 自动滚动保留最近记录） ==========
+const logsDir = path.join(app.getPath('userData'), 'logs')
+const errorLogPath = path.join(logsDir, 'error.log')
+const MAX_ERROR_LOG_SIZE = 5 * 1024 * 1024
+
+// 记录错误日志：超过 5M 时把当前日志滚动为 error-old.log（覆盖更旧的），重新开始记录
+ipcMain.handle('log:error', (_, text: string) => {
+  try {
+    fs.mkdirSync(logsDir, { recursive: true })
+    if (fs.existsSync(errorLogPath) && fs.statSync(errorLogPath).size > MAX_ERROR_LOG_SIZE) {
+      fs.renameSync(errorLogPath, path.join(logsDir, 'error-old.log'))
+    }
+    const stamp = new Date().toLocaleString('zh-CN', { hour12: false })
+    fs.appendFileSync(errorLogPath, `[${stamp}] ${text}\n`)
+    return true
+  } catch (error) {
+    console.error('写入错误日志失败:', error)
+    return false
+  }
+})
+
+// 打开日志目录
+ipcMain.handle('log:openDir', () => {
+  try {
+    fs.mkdirSync(logsDir, { recursive: true })
+    shell.openPath(logsDir)
+    return true
+  } catch (error) {
+    console.error('打开日志目录失败:', error)
+    return false
+  }
+})
+
+// 导出错误日志（保存对话框选择位置后复制）
+ipcMain.handle('log:export', async () => {
+  try {
+    fs.mkdirSync(logsDir, { recursive: true })
+    const result = await dialog.showSaveDialog({
+      title: '导出错误日志',
+      defaultPath: `bbtools-错误日志-${new Date().toISOString().slice(0, 10)}.log`,
+      filters: [{ name: '日志文件', extensions: ['log', 'txt'] }]
+    })
+    if (result.canceled || !result.filePath) return { ok: false, canceled: true }
+    if (fs.existsSync(errorLogPath)) {
+      fs.copyFileSync(errorLogPath, result.filePath)
+    } else {
+      fs.writeFileSync(result.filePath, '（暂无错误日志）\n')
+    }
+    return { ok: true, canceled: false }
+  } catch (error) {
+    console.error('导出错误日志失败:', error)
+    return { ok: false, canceled: false }
+  }
+})
+
 // 获取崩崩数据
 ipcMain.on('getBBData', async (event, messageId, arg, cookie) => {
   try {

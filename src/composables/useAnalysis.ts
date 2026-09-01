@@ -70,7 +70,7 @@ export function useAnalysis(options: UseAnalysisOptions = {}) {
         resultStatus.value = historyObj.status || ''
         redSquare.value = historyObj.name1 || ''
         blueSquare.value = historyObj.name2 || ''
-        // 团战用 endtime（22 点结束）→ 统一显示 20 点开始时间；团本用 begin_time
+        // 团战用 endtime（22 点结束）→ 统一减 2 小时显示 20 点开始时间；团本用 begin_time
         const raw = (historyObj as any).endtime
           ? (historyObj as any).endtime - 2 * 60 * 60
           : (historyObj as any).begin_time || 0

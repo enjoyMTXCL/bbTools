@@ -73,8 +73,9 @@ const changeServer = () => {
 /* 获取服务器数据 */
 const receiveServerData = (event: any, server: Server[]) => {
   serverList.value = server
-  if (!serverName.value) {
-    serverName.value = serverList.value[0].value
+  // 当前选择不在服务器列表中时（如服务器标识更新后旧值失效），默认选中第一个
+  if (!serverName.value || !serverList.value.some((s) => s.value === serverName.value)) {
+    serverName.value = serverList.value[0]?.value || ''
     changeServer()
   }
 }

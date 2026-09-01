@@ -29,8 +29,9 @@ const defaultConfig = {
     { name: '混服S1', value: 'hun01', display: true },
     { name: '混服S2', value: 'hun02', display: true },
     { name: '国服', value: 'gf01', display: true },
-    { name: 'B服01', value: 'bilibili01', display: true },
-    { name: 'B服02', value: 'bilibili02', display: true },
+    // B服服务器标识已更新为 bb01/bb02（旧值 bilibili01/bilibili02 已失效），老用户配置按名称自动迁移
+    { name: 'B服01', value: 'bb01', display: true },
+    { name: 'B服02', value: 'bb02', display: true },
     { name: 'UC服01', value: 'uc01', display: true },
     { name: 'UC服02', value: 'uc02', display: true },
     // { name: '当乐服', value: 'dangle01', display: true }
@@ -84,84 +85,46 @@ const getServerList = () => {
   return userConfig.servers || defaultConfig.servers;
 }
 
-// 版本比较函数
-const compareVersions = (version1: string, version2: string): number => {
-  const v1Parts = version1.split('.').map(Number);
-  const v2Parts = version2.split('.').map(Number);
-  
-  for (let i = 0; i < Math.max(v1Parts.length, v2Parts.length); i++) {
-    const v1Part = v1Parts[i] || 0;
-    const v2Part = v2Parts[i] || 0;
-    
-    if (v1Part < v2Part) return -1;
-    if (v1Part > v2Part) return 1;
-  }
-  
-  return 0;
-}
-
-// 配置合并策略
+// 配置合并策略：按服务器「名称」匹配（旧逻辑按 value 去重，会在服务器标识更新时产生重复项）。
+// - 名称与新版默认配置一致（如 B服01）→ 采用新版默认配置（value 同步更新，bilibili01 → bb01），display 仍尊重用户的隐藏选择
+// - 名称是用户自定义的（默认配置里没有）→ 保留用户配置（自定义服务器，如手动加进 serverData.json 的）
+// - 默认配置有而用户没有的 → 补全
 const mergeConfigs = (userConfig: Partial<AppConfig> | null, defaultConfig: AppConfig): AppConfig => {
   if (!userConfig) {
     return defaultConfig;
   }
 
-  // 保留用户的自定义服务器
   const userServers = userConfig.servers || [];
   const defaultServers = defaultConfig.servers || [];
 
-  const serverMap = new Map();
+  const mergedServers: ServerConfig[] = [];
+  const usedNames = new Set<string>();
 
-  // 比较版本号，决定优先级
-  const userVersion = userConfig.version || '0.0.0';
-  const defaultVersion = defaultConfig.version || '0.0.0';
-  const useDefaultPriority = compareVersions(defaultVersion, userVersion) >= 0;
-  if (useDefaultPriority) {
-    // 使用默认配置优先级
-    defaultServers.forEach(defaultServer => {
-      serverMap.set(defaultServer.value, { ...defaultServer, display: defaultServer.display ?? true });
-    });
-    // userServers内没有的再添加用户服务器，并合并display字段
-    userServers.forEach(userServer => {
-      if (!serverMap.has(userServer.value)) {
-        serverMap.set(userServer.value, { ...userServer, display: userServer.display ?? true });
-      } else {
-        // 如果服务器已存在，合并display字段（false覆盖true）
-        const existingServer = serverMap.get(userServer.value);
-        const mergedServer = {
-          ...existingServer,
-          display: (userServer.display === false || existingServer.display === false) ? false : true
-        };
-        serverMap.set(userServer.value, mergedServer);
-      }
-    });
-  } else {
-    userServers.forEach(userServer => {
-      serverMap.set(userServer.value, { ...userServer, display: userServer.display ?? true });
-    });
-    // defaultServers内没有的再添加默认服务器，并合并display字段
-    defaultServers.forEach(defaultServer => {
-      if (!serverMap.has(defaultServer.value)) {
-        serverMap.set(defaultServer.value, { ...defaultServer, display: defaultServer.display ?? true });
-      } else {
-        // 如果服务器已存在，合并display字段（false覆盖true）
-        const existingServer = serverMap.get(defaultServer.value);
-        const mergedServer = {
-          ...existingServer,
-          display: (defaultServer.display === false || existingServer.display === false) ? false : true
-        };
-        serverMap.set(defaultServer.value, mergedServer);
-      }
-    });
+  // 1. 用户配置：名称匹配默认配置的用新版默认（value 更新），未匹配的保留自定义
+  for (const userServer of userServers) {
+    const defaultServer = defaultServers.find((s) => s.name === userServer.name);
+    if (defaultServer) {
+      mergedServers.push({
+        ...defaultServer,
+        display: (userServer.display === false || defaultServer.display === false) ? false : true
+      });
+    } else {
+      mergedServers.push({ ...userServer, display: userServer.display ?? true });
+    }
+    usedNames.add(userServer.name);
   }
 
-  // 将 Map 转换为数组
-  const mergedServers = Array.from(serverMap.values());
+  // 2. 默认配置补全：用户没有的项直接添加
+  for (const defaultServer of defaultServers) {
+    if (!usedNames.has(defaultServer.name)) {
+      mergedServers.push({ ...defaultServer, display: defaultServer.display ?? true });
+    }
+  }
 
   return {
     ...defaultConfig,
     servers: mergedServers,
-    version: useDefaultPriority ? defaultConfig.version : userConfig.version
+    version: defaultConfig.version
   };
 }
 
